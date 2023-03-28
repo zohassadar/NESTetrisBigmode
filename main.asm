@@ -3409,7 +3409,7 @@ gameModeState_handleGameOver:
         cmp     #$00
         beq     @gameOver
         jmp     @ret
-        ; lda     numberOfPlayers
+        ; lda     numberOfPlayers ; fix this
         ; cmp     #$01
         ; beq     @ret
         ; lda     #$04
