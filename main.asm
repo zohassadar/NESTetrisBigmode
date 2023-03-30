@@ -3452,6 +3452,11 @@ gameModeState_handleGameOver:
         rts
 
 @ret:   inc     gameModeState
+        ; If a 4 is left in the accumulator then the game waits for NMI, blanking out the sprites and causing the
+        ; next box to flicker during a line clear
+        ; the comments in this link explain a lot
+        ; https://github.com/kirjavascript/TetrisGYM/blob/master/src/gamemodestate/branch.asm
+        lda     #$01 
         rts
 
 updateMusicSpeed:
