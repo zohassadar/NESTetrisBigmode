@@ -2,7 +2,7 @@ WINDOWS := $(shell which wine ; echo $$?)
 UNAME_S := $(shell uname -s)
 
 tetris_obj := main.o tetris-ram.o tetris.o
-cc65Path := tools/cc65
+cc65Path := 
 
 # Hack for OSX
 ifeq ($(UNAME_S),Darwin)
@@ -18,8 +18,8 @@ else
   WINE := wine
 endif
 
-CA65 := $(WINE) $(cc65Path)/bin/ca65
-LD65 := $(WINE) $(cc65Path)/bin/ld65
+CA65 := $(WINE) $(cc65Path)ca65
+LD65 := $(WINE) $(cc65Path)ld65
 nesChrEncode := python3 tools/nes-util/nes_chr_encode.py
 
 tetris.nes: tetris.o main.o tetris-ram.o
