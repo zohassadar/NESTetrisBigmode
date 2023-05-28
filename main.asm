@@ -1389,8 +1389,8 @@ endTypeBInit:
 typeBBlankInitCountByHeightTable:
         .byte   $32,$28,$23,$1E,$19,$14
 rngTable:
-        .byte   $EF,$7B,$EF,$7C,$7D,$7D,$EF
-        .byte   $EF
+        .byte   $EA,$93,$EA,$9B,$E0,$E0,$EA
+        .byte   $EA
 gameModeState_updateCountersAndNonPlayerState:
         lda     #$03
         jsr     changeCHRBank0
