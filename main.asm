@@ -2325,6 +2325,7 @@ isPositionValid:
         asl     a
         clc
         adc     tetriminoY
+        clc
         adc     tetriminoX
         sta     generalCounter
         lda     currentPiece

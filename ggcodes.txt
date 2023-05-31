@@ -1,4 +1,4 @@
 29Trainer                       GPLETG
 FasterDas                       GAAANO
 SlowFall                        ZELEUE
-TransitionTrainer               SZGOSZ
+TransitionTrainer               SZGOVZ
