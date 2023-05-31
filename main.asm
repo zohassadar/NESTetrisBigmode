@@ -837,6 +837,7 @@ gameMode_levelMenu_processPlayer1Navigation:
         bne     @startAndANotPressed
         lda     startLevel
         clc
+@GG_29Trainer:
         adc     #$0A
         sta     startLevel
 @startAndANotPressed:
@@ -1519,6 +1520,8 @@ drop_tetrimino:
         bcs     @noTableLookup
         lda     framesPerDropTable,x
 @noTableLookup:
+@GG_SlowFall:
+        nop
         sta     dropSpeed
         lda     fallTimer
         cmp     dropSpeed
@@ -1556,6 +1559,7 @@ shift_tetrimino:
         beq     @ret
         inc     autorepeatX
         lda     autorepeatX
+@GG_FasterDas:
         cmp     #$10
         bmi     @ret
         lda     #$0A
@@ -2319,6 +2323,7 @@ isPositionValid:
         lda     tetriminoY
         asl     a
         asl     a
+        clc
         adc     tetriminoY
         adc     tetriminoX
         sta     generalCounter
@@ -3377,6 +3382,7 @@ L9BD0:  lda     lines+1
         ror     generalCounter
         lda     levelNumber
         cmp     generalCounter
+@GG_TransitionTrainer:
         bpl     L9BFB
         inc     levelNumber
         lda     #$06

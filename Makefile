@@ -32,7 +32,7 @@ tetris:= tetris.nes
 .SECONDEXPANSION:
 .PRECIOUS:
 .SECONDARY:
-.PHONY: clean compare tools
+.PHONY: clean compare tools genie
 
 
 CAFLAGS = -g
@@ -54,6 +54,8 @@ ifeq (,$(filter clean tools/cTools/,$(MAKECMDGOALS)))
 $(info $(shell $(MAKE) -C tools/cTools/))
 endif
 
+genie: tetris.nes tetris.lbl
+	python ggcodes.py > ggcodes.txt
 
 %.o: dep = $(shell tools/cTools/scan_includes $(@D)/$*.asm)
 $(tetris_obj): %.o: %.asm $$(dep)
