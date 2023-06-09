@@ -38,44 +38,13 @@ spriteX         := $005B
 spriteY         := $005C
 tileOffset      := $005D
 successFlag     := $005F
-; player1_tetriminoX:= $0060
-; player1_tetriminoY:= $0061
-; player1_currentPiece:= $0062
-; player1_levelNumber:= $0064
-; player1_fallTimer:= $0065
-; player1_autorepeatX:= $0066
-; player1_startLevel:= $0067
-; player1_playState:= $0068
-; player1_vramRow := $0069
-; player1_completedRow:= $006A
-; player1_autorepeatY:= $006E
-; player1_holdDownPoints:= $006F
-; player1_lines   := $0070
-; player1_rowY    := $0072
-; player1_score   := $0073
-; player1_completedLines:= $0076
-; player1_curtainRow:= $0078
-; player1_startHeight:= $0079
-; player1_garbageHole:= $007A
-; player2_tetriminoX:= $0080
-; player2_tetriminoY:= $0081
-; player2_currentPiece:= $0082
-; player2_levelNumber:= $0084
-; player2_fallTimer:= $0085
-; player2_autorepeatX:= $0086
-; player2_startLevel:= $0087
-; player2_playState:= $0088
-; player2_vramRow := $0089
-; player2_completedRow:= $008A
-; player2_autorepeatY:= $008E
-; player2_holdDownPoints:= $008F
-; player2_lines   := $0090
-; player2_rowY    := $0092
-; player2_score   := $0093
-; player2_completedLines:= $0096
-; player2_curtainRow:= $0098
-; player2_startHeight:= $0099
-; player2_garbageHole:= $009A
+set_seed_input  := $0060
+set_seed        := $0064
+sps_menu        := $0067
+menuSeedCursorIndex := $0068
+menuMoveThrottle := $0069
+menuThrottleTmp := $006A
+seedVersion := $006B
 spriteXOffset   := $00A0
 spriteYOffset   := $00A1
 spriteIndexInOamContentLookup:= $00A2
@@ -245,6 +214,16 @@ JOY2_APUFC      := $4017                        ; read: bits 0-4 joy data lines 
 MMC1_CHR0       := $BFFF
 MMC1_CHR1       := $DFFF
 
+BUTTON_DOWN := $4
+BUTTON_UP := $8
+BUTTON_RIGHT := $1
+BUTTON_LEFT := $2
+BUTTON_B := $40
+BUTTON_A := $80
+BUTTON_SELECT := $20
+BUTTON_START := $10
+
+
 .segment        "PRG_chunk1": absolute
 
 ; incremented to reset MMC1 reg
@@ -264,7 +243,7 @@ returnFromAnydasRender:
         lda     #$00
         sta     oamStagingLength
 .endif
-        jsr     render
+        jsr     renderSeedIfNecessary
         dec     sleepCounter
         lda     sleepCounter
         cmp     #$FF
@@ -539,8 +518,8 @@ gameMode_legalScreen:
         ldx     #$02
         ldy     #$02
         jsr     memset_page
-        lda     #$00
-        jsr     sleep_for_a_vblanks
+        lda     #$FF
+        jsr     sleep_for_a_vblanks_and_bail_on_start
         lda     #$FF
         sta     generalCounter
 @waitForStartButton:
@@ -819,7 +798,7 @@ gameMode_levelMenu_processPlayer1Navigation:
         sta     selectingLevelOrHeight
         lda     newlyPressedButtons_player1
         sta     newlyPressedButtons
-        jsr     gameMode_levelMenu_handleLevelHeightNavigation
+        jsr     samePieceSetMenu
         ; lda     startLevel
         ; sta     player1_startLevel
         ; lda     startHeight
@@ -1074,7 +1053,7 @@ gameModeState_initGameBackground:
         jsr     twoDigsToPPU
         lda     highScoreScoresA+2
         jsr     twoDigsToPPU
-        jmp     gameModeState_initGameBackground_finish
+        jmp     drawSeedOnBackground
 
 @typeB: lda     #$0B
         sta     PPUDATA
@@ -1191,7 +1170,7 @@ gameModeState_initGameState:
         lda     #$A0
         sta     autorepeatY
         ; sta     player2_autorepeatY
-        jsr     chooseNextTetrimino
+        jsr     resetSetSeedandChooseNextTetrimino
         sta     currentPiece
         ; sta     player2_currentPiece
         jsr     incrementPieceStat
@@ -2979,10 +2958,10 @@ chooseNextTetrimino:
         rts
 
 pickRandomTetrimino:
-        jsr     @realStart
+        jsr     pickTetriminoSeed
         rts
 
-@realStart:
+pickNormalRNG:
         inc     spawnCount
         lda     rng_seed
         clc
@@ -3752,7 +3731,7 @@ gameModeState_checkForResetKeyCombo:
 
 @reset: jsr     updateAudio2
 .ifdef ANYDAS
-        lda     #$01
+        lda     #$00
 .else
         lda     #$00
 .endif
@@ -5760,6 +5739,363 @@ type_a_ending_nametable:
 
 .segment        "unreferenced_data1": absolute
 
+menuThrottle: ; add DAS-like movement to the menu
+        sta menuThrottleTmp
+        lda newlyPressedButtons_player1
+        cmp menuThrottleTmp
+        beq menuThrottleNew
+        lda heldButtons_player1
+        cmp menuThrottleTmp
+        bne @endThrottle
+        dec menuMoveThrottle
+        beq menuThrottleContinue
+@endThrottle:
+        lda #0
+        rts
+
+menuThrottleStart := $10
+menuThrottleRepeat := $4
+menuThrottleNew:
+        lda #menuThrottleStart
+        sta menuMoveThrottle
+        rts
+menuThrottleContinue:
+        lda #menuThrottleRepeat
+        sta menuMoveThrottle
+        rts
+loadSeedCursor:
+        lda frameCounter
+        and #$03
+        bne @loadSeedCursor
+        lda sps_menu
+        bne @ret
+@loadSeedCursor:
+        ldx oamStagingLength
+        lda #$78
+        sta oamStaging,x
+        inx
+        lda #$92
+        sta oamStaging,x
+        inx
+        lda #$00
+        sta oamStaging,x
+        inx
+        lda menuSeedCursorIndex
+        asl
+        asl
+        asl
+        clc
+        adc #$57
+        sta oamStaging,x
+        inx
+        stx oamStagingLength
+@ret:   rts
+
+
+renderSeedIfNecessary:
+        lda gameMode
+        cmp #$03
+        bne @continueToRender
+        lda #$22
+        sta PPUADDR
+        lda #$0C
+        sta PPUADDR
+        lda set_seed_input
+        jsr twoDigsToPPU
+        lda set_seed_input+1
+        jsr twoDigsToPPU
+        lda set_seed_input+2
+        jsr twoDigsToPPU
+        lda #$FF
+        sta PPUDATA
+        ldx seedVersion
+        bne @drawValidSeed
+        sta PPUDATA
+        sta PPUDATA
+        jmp render
+@drawValidSeed:
+        lda #$1F
+        sta PPUDATA
+        lda seedVersion
+        sta PPUDATA
+@continueToRender:
+        jmp render
+
+drawSeedOnBackground:
+        lda seedVersion
+        beq @dontDrawSeed
+        lda #$20
+        sta PPUADDR
+        lda #$83
+        sta PPUADDR
+        lda set_seed_input
+        jsr twoDigsToPPU
+        lda set_seed_input+1
+        jsr twoDigsToPPU
+        lda set_seed_input+2
+        jsr twoDigsToPPU
+@dontDrawSeed:
+        jmp gameModeState_initGameBackground_finish
+
+
+pickTetriminoSeed:
+        ; seed code by kirjava
+        lda seedVersion
+        bne @pickSeeded
+        jsr pickNormalRNG
+        jmp @ret
+@pickSeeded:
+        jsr setSeedNextRNG
+
+        ; SPSv3
+
+        lda set_seed_input+2
+        ror
+        ror
+        ror
+        ror
+        and #$F
+        ; v3
+        cmp #0
+        bne @notZero
+        lda #$10
+@notZero:
+        ; v2
+        ; cmp #0
+        ; beq @compatMode
+
+        adc #1
+        sta tmp3 ; step + 1 in tmp3
+@loop:
+        jsr setSeedNextRNG
+        dec tmp3
+        lda tmp3
+        bne @loop
+@compatMode:
+
+        inc set_seed+2 ; 'spawnCount'
+        lda set_seed
+        clc
+        adc set_seed+2
+        and #$07
+        cmp #$07
+        beq @invalidIndex
+        tax
+        lda spawnTable,x
+        cmp spawnID
+        bne @useNewSpawnID
+@invalidIndex:
+        ldx #set_seed
+        ldy #$02
+        jsr generateNextPseudorandomNumber
+        lda set_seed
+        and #$07
+        clc
+        adc spawnID
+@L992A:
+        cmp #$07
+        bcc @L9934
+        sec
+        sbc #$07
+        jmp @L992A
+
+@L9934:
+        tax
+        lda spawnTable,x
+@useNewSpawnID:
+        sta spawnID
+@ret:   rts
+
+setSeedNextRNG:
+        ldx #set_seed
+        ldy #$02
+        jsr generateNextPseudorandomNumber
+        rts
+
+checkValidSeed:
+        lda #$00
+        sta seedVersion
+        lda set_seed_input
+        bne @seeded
+        lda set_seed_input+1
+        bne @seeded
+        rts
+@seeded:
+        lda #$05
+        sta seedVersion
+        lda set_seed_input+2
+        and #$F0
+        beq @ret
+        dec seedVersion
+@ret:   rts
+
+
+
+samePieceSetMenu:
+        lda menuSeedCursorIndex
+        bne @cursorAlreadySet
+        inc menuSeedCursorIndex
+@cursorAlreadySet:
+        lda newlyPressedButtons_player1
+        and #$20
+        beq @selectNotPressed
+        lda sps_menu
+        eor #$01
+        sta sps_menu
+@selectNotPressed:
+        lda sps_menu
+        bne continueSamePieceSetMenu
+        jsr loadSeedCursor
+        jsr gameMode_levelMenu_handleLevelHeightNavigation
+        rts
+continueSamePieceSetMenu:
+        lda heldButtons_player1
+        cmp #BUTTON_START+BUTTON_A
+        bne @skipSeedSelect
+        lda rng_seed
+        sta set_seed_input
+        lda rng_seed+1
+        sta set_seed_input+1
+        lda rng_seed+1
+        eor #$77
+        ror
+        sta set_seed_input+2
+@skipSeedSelect:
+        lda heldButtons_player1
+        cmp #BUTTON_START+BUTTON_B
+        bne @skipSeedReset
+        lda #$00
+        sta set_seed_input
+        sta set_seed_input+1
+        sta set_seed_input+2
+        lda #$01
+        sta menuSeedCursorIndex
+@skipSeedReset:
+        lda #BUTTON_LEFT
+        jsr menuThrottle
+        beq @skipSeedLeft
+        lda #$01
+        sta soundEffectSlot1Init
+        lda menuSeedCursorIndex
+        cmp #$01
+        bne @noSeedLeftWrap
+        lda #7
+        sta menuSeedCursorIndex
+@noSeedLeftWrap:
+        dec menuSeedCursorIndex
+@skipSeedLeft:
+        lda #BUTTON_RIGHT
+        jsr menuThrottle
+        beq @skipSeedRight
+        lda #$01
+        sta soundEffectSlot1Init
+        inc menuSeedCursorIndex
+        lda menuSeedCursorIndex
+        cmp #7
+        bne @skipSeedRight
+        lda #1
+        sta menuSeedCursorIndex
+@skipSeedRight:
+        lda menuSeedCursorIndex
+        beq @skipSeedControl
+        lda menuSeedCursorIndex
+        sbc #1
+        lsr
+        tax ; save seed offset
+
+        ; handle changing seed vals
+
+        lda #BUTTON_UP
+        jsr menuThrottle
+        beq @skipSeedUp
+        lda #$01
+        sta soundEffectSlot1Init
+        lda menuSeedCursorIndex
+        and #1
+        beq @lowNybbleUp
+
+        lda set_seed_input, x
+        clc
+        adc #$10
+        sta set_seed_input, x
+
+        jmp @skipSeedUp
+@lowNybbleUp:
+        lda set_seed_input, x
+        clc
+        tay
+        and #$F
+        cmp #$F
+        bne @noWrapUp
+        tya
+        and #$F0
+        sta set_seed_input, x
+        jmp @skipSeedUp
+@noWrapUp:
+        tya
+        adc #1
+        sta set_seed_input, x
+@skipSeedUp:
+
+        lda #BUTTON_DOWN
+        jsr menuThrottle
+        beq @skipSeedDown
+        lda #$01
+        sta soundEffectSlot1Init
+        lda menuSeedCursorIndex
+        and #1
+        beq @lowNybbleDown
+
+        lda set_seed_input, x
+        sbc #$10
+        clc
+        sta set_seed_input, x
+
+        jmp @skipSeedDown
+@lowNybbleDown:
+        lda set_seed_input, x
+        clc
+        tay
+        and #$F
+        cmp #$0
+        bne @noWrapDown
+        tya
+        and #$F0
+        clc
+        adc #$F
+        sta set_seed_input, x
+        jmp @skipSeedDown
+@noWrapDown:
+        tya
+        sbc #1
+        sta set_seed_input, x
+@skipSeedDown:
+@skipSeedControl:
+        jsr checkValidSeed
+        jsr loadSeedCursor
+        lda #$00
+        sta newlyPressedButtons_player1
+        rts
+
+resetSetSeedandChooseNextTetrimino:
+        lda set_seed_input
+        sta set_seed
+        lda set_seed_input+1
+        sta set_seed+1
+        lda set_seed_input+2
+        sta set_seed+2
+        jmp chooseNextTetrimino
+
+
+sleep_for_a_vblanks_and_bail_on_start:
+        sta     sleepCounter
+@loop:  jsr     updateAudioWaitForNmiAndResetOamStaging
+        lda     newlyPressedButtons_player1
+        and     #BUTTON_START
+        bne     @ret
+        lda     sleepCounter
+        bne     @loop
+@ret:   rts
 
 .ifdef ANYDAS
 ; Anydas code by HydrantDude
