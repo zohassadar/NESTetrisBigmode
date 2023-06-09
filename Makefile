@@ -2,6 +2,7 @@ WINDOWS := $(shell which wine ; echo $$?)
 UNAME_S := $(shell uname -s)
 
 tetris_obj := main.o tetris-ram.o tetris.o
+tetris_anydas_obj := main_anydas.o tetris-ram_anydas.o tetris_anydas.o
 cc65Path := tools/cc65
 
 # Hack for OSX
@@ -34,8 +35,10 @@ tetris:= tetris.nes
 .SECONDARY:
 .PHONY: clean compare tools genie
 
+FLAG_PREFIX := -D
+BUILD_FLAGS = $(foreach val,$(subst $(shell echo " "), ,$(strip $(CA65_FLAGS))),$(FLAG_PREFIX) $(val))
 
-CAFLAGS = -g
+CAFLAGS := -g $(BUILD_FLAGS)
 LDFLAGS =
 
 compare: $(tetris)
@@ -60,9 +63,11 @@ genie: tetris.nes tetris.lbl
 %.o: dep = $(shell tools/cTools/scan_includes $(@D)/$*.asm)
 $(tetris_obj): %.o: %.asm $$(dep)
 		$(CA65) $(CAFLAGS) $*.asm -o $@
+		$(CA65) $(CAFLAGS) -D ANYDAS $*.asm -o $(basename $@)_anydas$(suffix $@)
 
 %: %.cfg
 		$(LD65) $(LDFLAGS) -Ln $(basename $@).lbl --dbgfile $(basename $@).dbg -o $@ -C $< $(tetris_obj)
+		$(LD65) $(LDFLAGS) -Ln $(basename $@)_anydas.lbl --dbgfile $(basename $@)_anydas.dbg -o $(basename $@)_anydas$(suffix $@) -C $< $(tetris_anydas_obj)
 
 %.bin: %.py
 		$(pythonExecutable) $?
