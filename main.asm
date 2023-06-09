@@ -257,8 +257,8 @@ nmi:    pha
         tya
         pha
 .ifdef ANYDAS
-        jmp     anyDasFunction1
-finishAnyDasFunction1:
+        jmp     renderAnydasMenu
+returnFromAnydasRender:
         nop
 .else
         lda     #$00
@@ -290,7 +290,7 @@ finishAnyDasFunction1:
         lda     #$01
         sta     verticalBlankingInterval
 .ifdef ANYDAS
-        jsr     anyDasFunction2
+        jsr     anydasControllerInput
 .else
         jsr     pollControllerButtons
 .endif
@@ -7548,12 +7548,12 @@ music_endings_noiseScript:
 
 .ifdef ANYDAS
 ; Anydas code by HydrantDude
-anyDasFunction1:
+renderAnydasMenu:
         lda gameMode
         cmp #$01
-        beq pastJump
-        jmp anydasJumppoint
-pastJump:
+        beq @continueRendering
+        jmp @clearOAMStagingAndReturn
+@continueRendering:
         lda #$26
         sta PPUADDR
         lda #$70
@@ -7571,15 +7571,15 @@ pastJump:
         lda #$B5
         sta PPUADDR
         lda anydasARECharge
-        bne jumpPoint2
+        bne @areChargeOn
         lda #$0F
         sta PPUDATA
         sta PPUDATA
-        bne jumpPoint3
-jumpPoint2:
+        bne @drawArrow
+@areChargeOn:
         lda #$17
         sta PPUDATA
-jumpPoint3:
+@drawArrow:
         lda #$FF
         sta PPUDATA
         ldx #$FF
@@ -7588,9 +7588,9 @@ jumpPoint3:
         lda #$72
         sta PPUADDR
         lda anydasMenu
-        bne jumpPoint4
+        bne @notDasOption
         ldx #$63
-jumpPoint4:
+@notDasOption:
         stx PPUDATA
         ldx #$FF
         lda #$26
@@ -7599,9 +7599,9 @@ jumpPoint4:
         sta PPUADDR
         lda anydasMenu
         cmp #$01
-        bne jumpPoint5
+        bne @notARROption
         ldx #$63
-jumpPoint5:
+@notARROption:
         stx PPUDATA
         ldx #$FF
         lda #$26
@@ -7610,62 +7610,60 @@ jumpPoint5:
         sta PPUADDR
         lda anydasMenu
         cmp #$02
-        bne jumpPoint6
+        bne @notAREOption
         ldx #$63
-jumpPoint6:
+@notAREOption:
         stx PPUDATA
-anydasJumppoint:
+@clearOAMStagingAndReturn:
         lda #$00
         sta oamStagingLength
-        jmp finishAnyDasFunction1
+        jmp returnFromAnydasRender
 
-anyDasFunction2:
+anydasControllerInput:
         jsr pollController
         lda gameMode
         cmp #$01
-        bne jumpPoint13
+        bne @ret3
         lda newlyPressedButtons_player1
         and #$0F
-        beq jumpPoint13
+        beq @ret3
         and #$0C
-        beq jumpPoint7
+        beq @upDownNotPressed
         and #$04
-        beq jumpPoint8
+        beq @downNotPressed
         inc anydasMenu
         lda anydasMenu
         cmp #$03
-        bne jumpPoint9
+        bne @ret1
         lda #$00
         sta anydasMenu
-jumpPoint9:
-        rts
-jumpPoint8:
+@ret1:  rts
+@downNotPressed:
         dec anydasMenu
         lda anydasMenu
         cmp #$FF
-        bne jumpPoint10
+        bne @ret2
         lda #$02
         sta anydasMenu
-jumpPoint10:
+@ret2:
         rts
-jumpPoint7:
+@upDownNotPressed:
         ldx anydasMenu
         cpx #$02
-        beq jumpPoint11
+        beq @toggleARECharge
         lda newlyPressedButtons_player1
         and #$01
-        beq jumpPoint12
+        beq @rightNotPressed
         inc anydasDASValue,X
         rts
-jumpPoint12:
+@rightNotPressed:
         dec anydasDASValue,X
         rts
-jumpPoint11:
+@toggleARECharge:
         lda anydasARECharge
         eor #$01
         sta anydasARECharge
-jumpPoint13:
-        rts
+@ret3:  rts
 .endif
 
 
