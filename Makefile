@@ -1,8 +1,8 @@
 WINDOWS := $(shell which wine ; echo $$?)
 UNAME_S := $(shell uname -s)
 
-bigmode_obj := main.o tetris-ram.o tetris.o
-bigmode_anydas_obj := main_anydas.o tetris-ram_anydas.o tetris_anydas.o
+bigmode_obj := main.o bigmode-ram.o bigmode.o
+bigmode_anydas_obj := main_anydas.o bigmode-ram_anydas.o bigmode_anydas.o
 cc65Path := tools/cc65
 
 # Hack for OSX
@@ -25,7 +25,7 @@ LD65 := $(WINE) $(cc65Path)/bin/ld65
 nesChrEncode := python3 tools/nes-util/nes_chr_encode.py
 pythonExecutable := python
 
-bigmode.nes: tetris.o main.o tetris-ram.o
+bigmode.nes: bigmode.o main.o bigmode-ram.o
 
 bigmode:= bigmode.nes
 
