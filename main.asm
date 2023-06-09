@@ -4,9 +4,10 @@ tmp1            := $0000
 tmp2            := $0001
 tmp3            := $0002
 tmpBulkCopyToPpuReturnAddr:= $0005
-anydasVar1 := $000D
-anydasVar2 := $000E
-anydasVar3 := $000F
+anydasMenu := $000C
+anydasDASValue := $000D
+anydasARRValue := $000E
+anydasARECharge := $000F
 patchToPpuAddr  := $0014
 rng_seed        := $0017
 spawnID         := $0019
@@ -256,10 +257,13 @@ nmi:    pha
         tya
         pha
 .ifdef ANYDAS
-        jsr     anyDasFunction1
-.endif
+        jmp     anyDasFunction1
+finishAnyDasFunction1:
+        nop
+.else
         lda     #$00
         sta     oamStagingLength
+.endif
         jsr     render
         dec     sleepCounter
         lda     sleepCounter
@@ -285,9 +289,10 @@ nmi:    pha
         sta     PPUSCROLL
         lda     #$01
         sta     verticalBlankingInterval
-        jsr     pollControllerButtons
 .ifdef ANYDAS
         jsr     anyDasFunction2
+.else
+        jsr     pollControllerButtons
 .endif
         pla
         tay
@@ -403,11 +408,11 @@ initRamContinued:
         sta     gameModeState
 .ifdef ANYDAS
         lda     #$01
-.endif
         sta     gameMode
-        ; lda     #$01
-        ; sta     numberOfPlayers
-        ; lda     #$00
+.else
+        sta     gameMode
+        lda     #$01
+.endif
         sta     frameCounter+1
 @mainLoop:
         jsr     branchOnGameMode
@@ -516,128 +521,6 @@ playState_playerControlsActiveTetrimino:
         jsr     drop_tetrimino
         rts
 
-.ifdef ANYDAS
-anyDasFunction1:
-        LDA $C0
-        CMP #$01
-        BEQ pastJump
-        JMP anydasJumppoint
-pastJump:
-        LDA #$26
-        STA $2006
-        LDA #$70
-        STA $2006
-        LDA $0D
-        JSR twoDigsToPPU
-        LDA #$26
-        STA $2006
-        LDA #$90
-        STA $2006
-        LDA $0E
-        JSR twoDigsToPPU
-        LDA #$26
-        STA $2006
-        LDA #$B5
-        STA $2006
-        LDA $0F
-        BNE jumpPoint2
-        LDA #$0F
-        STA $2007
-        STA $2007
-        BNE jumpPoint3
-jumpPoint2:
-        LDA #$17
-        STA $2007
-jumpPoint3:
-        LDA #$FF
-        STA $2007
-        LDX #$FF
-        LDA #$26
-        STA $2006
-        LDA #$72
-        STA $2006
-        LDA $0C
-        BNE jumpPoint4
-        LDX #$77
-jumpPoint4:
-        STX $2007
-        LDX #$FF
-        LDA #$26
-        STA $2006
-        LDA #$92
-        STA $2006
-        LDA $0C
-        CMP #$01
-        BNE jumpPoint5
-        LDX #$77
-jumpPoint5:
-        STX $2007
-        LDX #$FF
-        LDA #$26
-        STA $2006
-        LDA #$B7
-        STA $2006
-        LDA $0C
-        CMP #$02
-        BNE jumpPoint6
-        LDX #$77
-jumpPoint6:
-        STX $2007
-anydasJumppoint:
-        LDA #$00
-        STA $B3
-        rts
-
-anyDasFunction2:
-        ; JSR $9D51
-        LDA $C0
-        CMP #$01
-        BNE jumpPoint13
-        LDA $F5
-        AND #$0F
-        BEQ jumpPoint13
-        AND #$0C
-        BEQ jumpPoint7
-        AND #$04
-        BEQ jumpPoint8
-        INC $0C
-        LDA $0C
-        CMP #$03
-        BNE jumpPoint9
-        LDA #$00
-        STA $0C
-jumpPoint9:
-        RTS
-jumpPoint8:
-        DEC $0C
-        LDA $0C
-        CMP #$FF
-        BNE jumpPoint10
-        LDA #$02
-        STA $0C
-jumpPoint10:
-        RTS
-jumpPoint7:
-        LDX $0C
-        CPX #$02
-        BEQ jumpPoint11
-        LDA $F5
-        AND #$01
-        BEQ jumpPoint12
-        INC $0D,X
-        RTS
-jumpPoint12:
-        DEC $0D,X
-        RTS
-jumpPoint11:
-        LDA $0F
-        EOR #$01
-        STA $0F
-jumpPoint13:
-        RTS
-.endif
-
-
 
 
 gameMode_legalScreen:
@@ -708,9 +591,12 @@ gameMode_titleScreen:
         lda     newlyPressedButtons_player1
         cmp     #$10
         beq     @startButtonPressed
-.ifndef ANYDAS
         lda     frameCounter+1
         cmp     #$05
+.ifdef ANYDAS
+        beq     @dontGoToTimeout
+@dontGoToTimeout:
+.else
         beq     @timeout
 .endif
         jmp     @waitForStartButton
@@ -1679,11 +1565,11 @@ shift_tetrimino:
         lda     autorepeatX
         cmp     #$01
         bpl     @ret
-        lda     anydasVar2
+        lda     anydasARRValue
         sta     autorepeatX
         jmp     @buttonHeldDown
 @resetAutorepeatX:
-        lda     anydasVar1
+        lda     anydasDASValue
 .else
         inc     autorepeatX
         lda     autorepeatX
@@ -3757,7 +3643,7 @@ pollControllerButtons:
         and     generalCounter
         sta     newlyPressedButtons_player1
 .ifdef ANYDAS
-        lda     anydasVar3
+        lda     anydasARECharge
         cmp     #$01
         bne     @anyDasBranch
         sta     autorepeatX
@@ -5834,7 +5720,11 @@ defaultHighScoresTable:
 legal_screen_nametable:
         .incbin "gfx/nametables/legal_screen_nametable.bin"
 title_screen_nametable:
+.ifdef ANYDAS
+        .incbin "gfx/nametables/title_screen_nametable_anydas.bin"
+.else
         .incbin "gfx/nametables/title_screen_nametable.bin"
+.endif
 game_type_menu_nametable:
         .incbin "gfx/nametables/game_type_menu_nametable.bin"
 level_menu_nametable:
@@ -7655,7 +7545,130 @@ music_endings_noiseScript:
 
 .segment        "unreferenced_data4": absolute
 
-.include "data/unreferenced_data4.asm"
+
+.ifdef ANYDAS
+; Anydas code by HydrantDude
+anyDasFunction1:
+        lda gameMode
+        cmp #$01
+        beq pastJump
+        jmp anydasJumppoint
+pastJump:
+        lda #$26
+        sta PPUADDR
+        lda #$70
+        sta PPUADDR
+        lda anydasDASValue
+        jsr twoDigsToPPU
+        lda #$26
+        sta PPUADDR
+        lda #$90
+        sta PPUADDR
+        lda anydasARRValue
+        jsr twoDigsToPPU
+        lda #$26
+        sta PPUADDR
+        lda #$B5
+        sta PPUADDR
+        lda anydasARECharge
+        bne jumpPoint2
+        lda #$0F
+        sta PPUDATA
+        sta PPUDATA
+        bne jumpPoint3
+jumpPoint2:
+        lda #$17
+        sta PPUDATA
+jumpPoint3:
+        lda #$FF
+        sta PPUDATA
+        ldx #$FF
+        lda #$26
+        sta PPUADDR
+        lda #$72
+        sta PPUADDR
+        lda anydasMenu
+        bne jumpPoint4
+        ldx #$63
+jumpPoint4:
+        stx PPUDATA
+        ldx #$FF
+        lda #$26
+        sta PPUADDR
+        lda #$92
+        sta PPUADDR
+        lda anydasMenu
+        cmp #$01
+        bne jumpPoint5
+        ldx #$63
+jumpPoint5:
+        stx PPUDATA
+        ldx #$FF
+        lda #$26
+        sta PPUADDR
+        lda #$B7
+        sta PPUADDR
+        lda anydasMenu
+        cmp #$02
+        bne jumpPoint6
+        ldx #$63
+jumpPoint6:
+        stx PPUDATA
+anydasJumppoint:
+        lda #$00
+        sta oamStagingLength
+        jmp finishAnyDasFunction1
+
+anyDasFunction2:
+        jsr pollController
+        lda gameMode
+        cmp #$01
+        bne jumpPoint13
+        lda newlyPressedButtons_player1
+        and #$0F
+        beq jumpPoint13
+        and #$0C
+        beq jumpPoint7
+        and #$04
+        beq jumpPoint8
+        inc anydasMenu
+        lda anydasMenu
+        cmp #$03
+        bne jumpPoint9
+        lda #$00
+        sta anydasMenu
+jumpPoint9:
+        rts
+jumpPoint8:
+        dec anydasMenu
+        lda anydasMenu
+        cmp #$FF
+        bne jumpPoint10
+        lda #$02
+        sta anydasMenu
+jumpPoint10:
+        rts
+jumpPoint7:
+        ldx anydasMenu
+        cpx #$02
+        beq jumpPoint11
+        lda newlyPressedButtons_player1
+        and #$01
+        beq jumpPoint12
+        inc anydasDASValue,X
+        rts
+jumpPoint12:
+        dec anydasDASValue,X
+        rts
+jumpPoint11:
+        lda anydasARECharge
+        eor #$01
+        sta anydasARECharge
+jumpPoint13:
+        rts
+.endif
+
+
 
 ; End of "unreferenced_data4" segment
 .code
