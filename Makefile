@@ -1,8 +1,8 @@
 WINDOWS := $(shell which wine ; echo $$?)
 UNAME_S := $(shell uname -s)
 
-tetris_obj := main.o tetris-ram.o tetris.o
-tetris_anydas_obj := main_anydas.o tetris-ram_anydas.o tetris_anydas.o
+bigmode_obj := main.o tetris-ram.o tetris.o
+bigmode_anydas_obj := main_anydas.o tetris-ram_anydas.o tetris_anydas.o
 cc65Path := tools/cc65
 
 # Hack for OSX
@@ -25,9 +25,9 @@ LD65 := $(WINE) $(cc65Path)/bin/ld65
 nesChrEncode := python3 tools/nes-util/nes_chr_encode.py
 pythonExecutable := python
 
-tetris.nes: tetris.o main.o tetris-ram.o
+bigmode.nes: tetris.o main.o tetris-ram.o
 
-tetris:= tetris.nes
+bigmode:= bigmode.nes
 
 .SUFFIXES:
 .SECONDEXPANSION:
@@ -41,11 +41,11 @@ BUILD_FLAGS = $(foreach val,$(subst $(shell echo " "), ,$(strip $(CA65_FLAGS))),
 CAFLAGS := -g $(BUILD_FLAGS)
 LDFLAGS =
 
-compare: $(tetris)
-	$(SHA1SUM) -c tetris.sha1
+compare: $(bigmode)
+	$(SHA1SUM) -c bigmode.sha1
 
 clean:
-	rm -f  $(tetris_obj) $(tetris) *.d tetris.dbg tetris.lbl gfx/*.chr gfx/nametables/*.bin
+	rm -f  $(bigmode_obj) $(bigmode) $(bigmode_anydas_obj) *.d bigmode*.dbg bigmode*.lbl gfx/*.chr gfx/nametables/*.bin
 	$(MAKE) clean -C tools/cTools/
 
 tools:
@@ -57,17 +57,17 @@ ifeq (,$(filter clean tools/cTools/,$(MAKECMDGOALS)))
 $(info $(shell $(MAKE) -C tools/cTools/))
 endif
 
-genie: tetris.nes tetris.lbl
+genie: bigmode.nes bigmode.lbl
 	python ggcodes.py > ggcodes.txt
 
 %.o: dep = $(shell tools/cTools/scan_includes $(@D)/$*.asm)
-$(tetris_obj): %.o: %.asm $$(dep)
+$(bigmode_obj): %.o: %.asm $$(dep)
 		$(CA65) $(CAFLAGS) $*.asm -o $@
 		$(CA65) $(CAFLAGS) -D ANYDAS $*.asm -o $(basename $@)_anydas$(suffix $@)
 
 %: %.cfg
-		$(LD65) $(LDFLAGS) -Ln $(basename $@).lbl --dbgfile $(basename $@).dbg -o $@ -C $< $(tetris_obj)
-		$(LD65) $(LDFLAGS) -Ln $(basename $@)_anydas.lbl --dbgfile $(basename $@)_anydas.dbg -o $(basename $@)_anydas$(suffix $@) -C $< $(tetris_anydas_obj)
+		$(LD65) $(LDFLAGS) -Ln $(basename $@).lbl --dbgfile $(basename $@).dbg -o $@ -C $< $(bigmode_obj)
+		$(LD65) $(LDFLAGS) -Ln $(basename $@)_anydas.lbl --dbgfile $(basename $@)_anydas.dbg -o $(basename $@)_anydas$(suffix $@) -C $< $(bigmode_anydas_obj)
 
 %.bin: %.py
 		$(pythonExecutable) $?
