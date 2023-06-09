@@ -1557,6 +1557,8 @@ shift_tetrimino:
 .ifdef ANYDAS
         dec     autorepeatX
         lda     autorepeatX
+@GG_FasterDas:  ; won't work well in this mode, but adding label so GG script works
+@GG_MuchFasterDas: 
         cmp     #$01
         bpl     @ret
         lda     anydasARRValue
@@ -3641,6 +3643,11 @@ pollControllerButtons:
         cmp     #$01
         bne     @anyDasBranch
         sta     autorepeatX
+        nop
+        nop
+        nop
+        nop
+        nop
 .else
         lda     generalCounter
         sta     demo_heldButtons
