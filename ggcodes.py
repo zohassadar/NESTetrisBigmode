@@ -3,8 +3,10 @@ import re
 codes_raw = """
 29Trainer+1,14
 FasterDas+1,0C
+MuchFasterDas+1,08
 SlowFall,0A
 TransitionTrainer,A5
+ExtraLongBars+1,01
 """
 
 hexcodes = list("APZLGITYEOXUKSVN")
@@ -13,6 +15,10 @@ codes = {v: k for k, v in enumerate(hexcodes)}
 
 
 def addr_data_to_code(addr, data, compare=False):
+    """
+    Taken from:  https://github.com/greezybacon/GameGenie/blob/master/genie.py
+
+    """
     base = addr - 0x8000
     n = [0] * (8 if compare is not False else 6)
 

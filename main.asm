@@ -1560,6 +1560,7 @@ shift_tetrimino:
         inc     autorepeatX
         lda     autorepeatX
 @GG_FasterDas:
+@GG_MuchFasterDas:
         cmp     #$10
         bmi     @ret
         lda     #$0A
@@ -2989,6 +2990,7 @@ pickRandomTetrimino:
 L992A:  cmp     #$07
         bcc     L9934
         sec
+@GG_ExtraLongBars:
         sbc     #$07
         jmp     L992A
 

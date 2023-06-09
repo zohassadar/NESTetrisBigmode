@@ -1,4 +1,6 @@
 29Trainer                       GPLETG
 FasterDas                       GAAANO
+MuchFasterDas                   AAAANO
 SlowFall                        ZELEUE
 TransitionTrainer               SZGOVZ
+ExtraLongBars                   PETOIY
