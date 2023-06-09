@@ -1,14 +1,13 @@
-# Tetris
+# Tetris Big Mode
 
-This is a disassembly of Tetris (NES).
+NES Tetris modified to have bigger pieces.
 
-It builds the following rom:
+To get a rom:
 
-* Tetris (U) [!].nes `md5: ec58574d96bee8c8927884ae6e7a2508`
+Run `make`
 
-To set up the repository, see [**INSTALL.md**](INSTALL.md).
+or apply `BigMode.bps` to a backup of the NES version of Tetris using your favorite rom patcher.
 
+# Thanks
 
-Thanks to https://github.com/ejona86 for creating an info file and other files used to generate the disassembly code and other parts of the disassembly. (Original repository link:  https://github.com/ejona86/taus)
-
-CHR png converting tools repository link: https://github.com/qalle2/nes-util
+Thanks to [CelestialAmber](https://github.com/CelestialAmber/TetrisNESDisasm) for the repo this is based off of.
