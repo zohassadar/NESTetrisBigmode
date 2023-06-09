@@ -51,7 +51,7 @@ def addr_data_to_code(addr, data, compare=False):
     return "".join(map(lambda x: hexcodes[x], n))
 
 
-labels = open("tetris.lbl").readlines()
+labels = open("bigmode.lbl").readlines()
 
 label_map = {}
 
