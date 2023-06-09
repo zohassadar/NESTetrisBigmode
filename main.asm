@@ -4,6 +4,9 @@ tmp1            := $0000
 tmp2            := $0001
 tmp3            := $0002
 tmpBulkCopyToPpuReturnAddr:= $0005
+anydasVar1 := $000D
+anydasVar2 := $000E
+anydasVar3 := $000F
 patchToPpuAddr  := $0014
 rng_seed        := $0017
 spawnID         := $0019
@@ -252,6 +255,9 @@ nmi:    pha
         pha
         tya
         pha
+.ifdef ANYDAS
+        jsr     anyDasFunction1
+.endif
         lda     #$00
         sta     oamStagingLength
         jsr     render
@@ -280,6 +286,9 @@ nmi:    pha
         lda     #$01
         sta     verticalBlankingInterval
         jsr     pollControllerButtons
+.ifdef ANYDAS
+        jsr     anyDasFunction2
+.endif
         pla
         tay
         pla
@@ -392,6 +401,9 @@ initRamContinued:
         sta     unused_0E
         lda     #$00
         sta     gameModeState
+.ifdef ANYDAS
+        lda     #$01
+.endif
         sta     gameMode
         ; lda     #$01
         ; sta     numberOfPlayers
@@ -504,26 +516,129 @@ playState_playerControlsActiveTetrimino:
         jsr     drop_tetrimino
         rts
 
-; branchOnPlayStatePlayer2:
-;         lda     playState
-;         jsr     switch_s_plus_2a
-;         .addr   playState_unassignOrientationId
-;         .addr   playState_player2ControlsActiveTetrimino
-;         .addr   playState_lockTetrimino
-;         .addr   playState_checkForCompletedRows
-;         .addr   playState_noop
-;         .addr   playState_updateLinesAndStatistics
-;         .addr   playState_bTypeGoalCheck
-;         .addr   playState_receiveGarbage
-;         .addr   playState_spawnNextTetrimino
-;         .addr   playState_noop
-;         .addr   playState_updateGameOverCurtain
-;         .addr   playState_incrementPlayState
-; playState_player2ControlsActiveTetrimino:
-;         jsr     shift_tetrimino
-;         jsr     rotate_tetrimino
-;         jsr     drop_tetrimino
-;         rts
+.ifdef ANYDAS
+anyDasFunction1:
+        LDA $C0
+        CMP #$01
+        BEQ pastJump
+        JMP anydasJumppoint
+pastJump:
+        LDA #$26
+        STA $2006
+        LDA #$70
+        STA $2006
+        LDA $0D
+        JSR twoDigsToPPU
+        LDA #$26
+        STA $2006
+        LDA #$90
+        STA $2006
+        LDA $0E
+        JSR twoDigsToPPU
+        LDA #$26
+        STA $2006
+        LDA #$B5
+        STA $2006
+        LDA $0F
+        BNE jumpPoint2
+        LDA #$0F
+        STA $2007
+        STA $2007
+        BNE jumpPoint3
+jumpPoint2:
+        LDA #$17
+        STA $2007
+jumpPoint3:
+        LDA #$FF
+        STA $2007
+        LDX #$FF
+        LDA #$26
+        STA $2006
+        LDA #$72
+        STA $2006
+        LDA $0C
+        BNE jumpPoint4
+        LDX #$77
+jumpPoint4:
+        STX $2007
+        LDX #$FF
+        LDA #$26
+        STA $2006
+        LDA #$92
+        STA $2006
+        LDA $0C
+        CMP #$01
+        BNE jumpPoint5
+        LDX #$77
+jumpPoint5:
+        STX $2007
+        LDX #$FF
+        LDA #$26
+        STA $2006
+        LDA #$B7
+        STA $2006
+        LDA $0C
+        CMP #$02
+        BNE jumpPoint6
+        LDX #$77
+jumpPoint6:
+        STX $2007
+anydasJumppoint:
+        LDA #$00
+        STA $B3
+        rts
+
+anyDasFunction2:
+        ; JSR $9D51
+        LDA $C0
+        CMP #$01
+        BNE jumpPoint13
+        LDA $F5
+        AND #$0F
+        BEQ jumpPoint13
+        AND #$0C
+        BEQ jumpPoint7
+        AND #$04
+        BEQ jumpPoint8
+        INC $0C
+        LDA $0C
+        CMP #$03
+        BNE jumpPoint9
+        LDA #$00
+        STA $0C
+jumpPoint9:
+        RTS
+jumpPoint8:
+        DEC $0C
+        LDA $0C
+        CMP #$FF
+        BNE jumpPoint10
+        LDA #$02
+        STA $0C
+jumpPoint10:
+        RTS
+jumpPoint7:
+        LDX $0C
+        CPX #$02
+        BEQ jumpPoint11
+        LDA $F5
+        AND #$01
+        BEQ jumpPoint12
+        INC $0D,X
+        RTS
+jumpPoint12:
+        DEC $0D,X
+        RTS
+jumpPoint11:
+        LDA $0F
+        EOR #$01
+        STA $0F
+jumpPoint13:
+        RTS
+.endif
+
+
+
 
 gameMode_legalScreen:
         jsr     updateAudio2
@@ -593,9 +708,11 @@ gameMode_titleScreen:
         lda     newlyPressedButtons_player1
         cmp     #$10
         beq     @startButtonPressed
+.ifndef ANYDAS
         lda     frameCounter+1
         cmp     #$05
         beq     @timeout
+.endif
         jmp     @waitForStartButton
 
 ; Show menu screens
@@ -1557,6 +1674,17 @@ shift_tetrimino:
         lda     heldButtons
         and     #$03
         beq     @ret
+.ifdef ANYDAS
+        dec     autorepeatX
+        lda     autorepeatX
+        cmp     #$01
+        bpl     @ret
+        lda     anydasVar2
+        sta     autorepeatX
+        jmp     @buttonHeldDown
+@resetAutorepeatX:
+        lda     anydasVar1
+.else
         inc     autorepeatX
         lda     autorepeatX
 @GG_FasterDas:
@@ -1569,6 +1697,7 @@ shift_tetrimino:
 
 @resetAutorepeatX:
         lda     #$00
+.endif
         sta     autorepeatX
 @buttonHeldDown:
         lda     heldButtons
@@ -1595,7 +1724,11 @@ shift_tetrimino:
 @restoreX:
         lda     originalY
         sta     tetriminoX
+.ifdef ANYDAS
+        lda     #$01
+.else
         lda     #$10
+.endif
         sta     autorepeatX
 @ret:   rts
 
@@ -3623,12 +3756,20 @@ pollControllerButtons:
         eor     generalCounter
         and     generalCounter
         sta     newlyPressedButtons_player1
+.ifdef ANYDAS
+        lda     anydasVar3
+        cmp     #$01
+        bne     @anyDasBranch
+        sta     autorepeatX
+.else
         lda     generalCounter
         sta     demo_heldButtons
         ldx     #$00
         lda     (demoButtonsAddr,x)
         sta     demo_repeats
         jsr     demoButtonsTable_indexIncr
+.endif
+@anyDasBranch:
         lda     demoButtonsAddr+1
         cmp     #>demoTetriminoTypeTable
         beq     @ret
@@ -3723,7 +3864,11 @@ gameModeState_checkForResetKeyCombo:
         rts
 
 @reset: jsr     updateAudio2
+.ifdef ANYDAS
+        lda     #$01
+.else
         lda     #$00
+.endif
         sta     gameMode
         rts
 
