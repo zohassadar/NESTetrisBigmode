@@ -2926,7 +2926,7 @@ playState_spawnNextTetrimino:
         lda     spawnOrientationFromOrientation,x
         sta     currentPiece
 .ifdef ANYDAS
-        jsr     setAutorepeatXAndIncrementStats
+        jsr     incrementStatsAndSetAutorepeatX
 .else
         jsr     incrementPieceStat
 .endif
@@ -6142,14 +6142,13 @@ sleep_for_a_vblanks_and_bail_on_start:
 .ifdef ANYDAS
 ; Anydas code by HydrantDude
 
-setAutorepeatXAndIncrementStats:
+incrementStatsAndSetAutorepeatX:
+        jsr     incrementPieceStat
         lda     anydasARECharge
         cmp     #$01
-        bne     @incrementStatsAndReturn
+        bne     @ret
         sta     autorepeatX
-@incrementStatsAndReturn:
-        jsr     incrementPieceStat
-        rts
+@ret:   rts
 
 
 
