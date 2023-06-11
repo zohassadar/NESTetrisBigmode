@@ -2925,15 +2925,11 @@ playState_spawnNextTetrimino:
         ldx     nextPiece
         lda     spawnOrientationFromOrientation,x
         sta     currentPiece
+.ifdef ANYDAS
+        jsr     setAutorepeatXAndIncrementStats
+.else
         jsr     incrementPieceStat
-;         lda     numberOfPlayers
-;         cmp     #$01
-;         beq     @onePlayerPieceSelection
-;         lda     twoPlayerPieceDelayPiece
-;         sta     nextPiece
-;         jmp     @resetDownHold
-
-; @onePlayerPieceSelection:
+.endif
         jsr     chooseNextTetrimino
         sta     nextPiece
 @resetDownHold:
@@ -3617,24 +3613,12 @@ pollControllerButtons:
         eor     generalCounter
         and     generalCounter
         sta     newlyPressedButtons_player1
-.ifdef ANYDAS
-        lda     anydasARECharge
-        cmp     #$01
-        bne     @anyDasBranch
-        sta     autorepeatX
-        nop
-        nop
-        nop
-        nop
-        nop
-.else
         lda     generalCounter
         sta     demo_heldButtons
         ldx     #$00
         lda     (demoButtonsAddr,x)
         sta     demo_repeats
         jsr     demoButtonsTable_indexIncr
-.endif
 @anyDasBranch:
         lda     demoButtonsAddr+1
         cmp     #>demoTetriminoTypeTable
@@ -3731,7 +3715,7 @@ gameModeState_checkForResetKeyCombo:
 
 @reset: jsr     updateAudio2
 .ifdef ANYDAS
-        lda     #$00
+        lda     #$01
 .else
         lda     #$00
 .endif
@@ -5763,6 +5747,30 @@ menuThrottleContinue:
         lda #menuThrottleRepeat
         sta menuMoveThrottle
         rts
+
+drawNonBlinkingMenuSprite:
+        ldx     startLevel
+        lda     levelToSpriteYOffset,x
+        sta     spriteYOffset
+        lda     #$00
+        sta     spriteIndexInOamContentLookup
+        ldx     startLevel
+        lda     levelToSpriteXOffset,x
+        sta     spriteXOffset
+        jsr     loadSpriteIntoOamStaging
+        lda     gameType
+        beq     @ret
+        ldx     startHeight
+        lda     heightToPpuHighAddr,x
+        sta     spriteYOffset
+        lda     #$00
+        sta     spriteIndexInOamContentLookup
+        ldx     startHeight
+        lda     heightToPpuLowAddr,x
+        sta     spriteXOffset
+        jsr     loadSpriteIntoOamStaging
+@ret:   rts
+
 loadSeedCursor:
         lda frameCounter
         and #$03
@@ -5785,7 +5793,7 @@ loadSeedCursor:
         asl
         asl
         clc
-        adc #$57
+        adc #$27
         sta oamStaging,x
         inx
         stx oamStagingLength
@@ -5798,7 +5806,7 @@ renderSeedIfNecessary:
         bne @continueToRender
         lda #$22
         sta PPUADDR
-        lda #$0C
+        lda #$06
         sta PPUADDR
         lda set_seed_input
         jsr twoDigsToPPU
@@ -5806,17 +5814,36 @@ renderSeedIfNecessary:
         jsr twoDigsToPPU
         lda set_seed_input+2
         jsr twoDigsToPPU
-        lda #$FF
-        sta PPUDATA
+        lda #$22
+        sta PPUADDR
+        lda #$0F
+        sta PPUADDR
         ldx seedVersion
         bne @drawValidSeed
+        lda #$17
         sta PPUDATA
+        lda #$18
+        sta PPUDATA
+        lda #$1B
+        sta PPUDATA
+        lda #$16
+        sta PPUDATA
+        lda #$0A
+        sta PPUDATA
+        lda #$15
         sta PPUDATA
         jmp render
 @drawValidSeed:
         lda #$1F
         sta PPUDATA
         lda seedVersion
+        sta PPUDATA
+        lda #$1C
+        sta PPUDATA
+        lda #$0E
+        sta PPUDATA
+        sta PPUDATA
+        lda #$0D
         sta PPUDATA
 @continueToRender:
         jmp render
@@ -5937,11 +5964,13 @@ samePieceSetMenu:
         inc menuSeedCursorIndex
 @cursorAlreadySet:
         lda newlyPressedButtons_player1
-        and #$20
+        and #BUTTON_SELECT
         beq @selectNotPressed
         lda sps_menu
         eor #$01
         sta sps_menu
+        lda #$01
+        sta soundEffectSlot1Init
 @selectNotPressed:
         lda sps_menu
         bne continueSamePieceSetMenu
@@ -5950,8 +5979,11 @@ samePieceSetMenu:
         rts
 continueSamePieceSetMenu:
         lda heldButtons_player1
-        cmp #BUTTON_START+BUTTON_A
-        bne @skipSeedSelect
+        and #BUTTON_A
+        beq @skipSeedSelect
+        lda newlyPressedButtons_player1
+        and #BUTTON_UP
+        beq @skipSeedSelect
         lda rng_seed
         sta set_seed_input
         lda rng_seed+1
@@ -5960,16 +5992,25 @@ continueSamePieceSetMenu:
         eor #$77
         ror
         sta set_seed_input+2
+        lda #$01
+        sta soundEffectSlot1Init
+        jmp @skipSeedControl
 @skipSeedSelect:
         lda heldButtons_player1
-        cmp #BUTTON_START+BUTTON_B
-        bne @skipSeedReset
+        and #BUTTON_A
+        beq @skipSeedReset
+        lda newlyPressedButtons_player1
+        and #BUTTON_DOWN
+        beq @skipSeedReset
         lda #$00
         sta set_seed_input
         sta set_seed_input+1
         sta set_seed_input+2
         lda #$01
         sta menuSeedCursorIndex
+        lda #$01
+        sta soundEffectSlot1Init
+        jmp @skipSeedControl
 @skipSeedReset:
         lda #BUTTON_LEFT
         jsr menuThrottle
@@ -6073,6 +6114,7 @@ continueSamePieceSetMenu:
 @skipSeedControl:
         jsr checkValidSeed
         jsr loadSeedCursor
+        jsr drawNonBlinkingMenuSprite
         lda #$00
         sta newlyPressedButtons_player1
         rts
@@ -6099,6 +6141,18 @@ sleep_for_a_vblanks_and_bail_on_start:
 
 .ifdef ANYDAS
 ; Anydas code by HydrantDude
+
+setAutorepeatXAndIncrementStats:
+        lda     anydasARECharge
+        cmp     #$01
+        bne     @incrementStatsAndReturn
+        sta     autorepeatX
+@incrementStatsAndReturn:
+        jsr     incrementPieceStat
+        rts
+
+
+
 renderAnydasMenu:
         lda gameMode
         cmp #$01
